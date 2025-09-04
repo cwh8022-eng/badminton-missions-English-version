@@ -1,375 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Badminton Skill Challenge</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Keep the same font to preserve original spacing/feel -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Noto Sans TC', sans-serif;
-            background-color: #FFFBEB;
-        }
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 200px;
-            height: 200px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal-content {
-            background-color: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            width: 90%;
-            max-width: 600px;
-            max-height: 80%;
-            overflow-y: auto;
-            position: relative;
-        }
-        .close-button {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            font-size: 1.8rem;
-            cursor: pointer;
-            color: #495579;
-        }
-        /* Keep the same class name so behavior & style match original */
-        .hidden{ display:none; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Badminton Skill Challenge</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --ink: #263159;
+      --primary: #FF8F52;
+      --headline: #495579;
+      --paper: #FFFDF7;
+      --success: #16a34a;
+      --danger: #ef4444;
+      --accent: #8b5cf6;
+    }
+    body { background: var(--paper); color: var(--ink); }
+    .card { background:#fff; border-radius: 1rem; box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+
+    .stamp-wrap { position: relative; }
+    .stamp-svg {
+      position:absolute; top:-10px; left:50%; transform:translateX(-50%) rotate(-8deg) scale(0.2);
+      width:120px; height:120px; opacity:0; pointer-events:none;
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,.2));
+    }
+    .stamp-bounce { animation: stampIn .7s ease-out forwards; }
+    @keyframes stampIn {
+      0% { transform:translateX(-50%) rotate(-8deg) scale(0.2); opacity:0; }
+      60% { transform:translateX(-50%) rotate(-6deg) scale(1.15); opacity:1; }
+      100% { transform:translateX(-50%) rotate(-8deg) scale(1); opacity:1; }
+    }
+
+    .modal { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:50; }
+    .modal.show { display:flex; }
+    .modal-card { width: min(960px, 92vw); background:#fff; border-radius:1rem; box-shadow:0 10px 30px rgba(0,0,0,.18); }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid #eee; }
+    .close-x { font-size:20px; font-weight:700; cursor:pointer; }
+    .modal-body { padding:0; }
+
+    .btn { padding:.6rem 1rem; border-radius:.75rem; font-weight:700; }
+    .btn-green { background:var(--success); color:#fff; }
+    .btn-purple { background:var(--accent); color:#fff; }
+    .btn-red { background:var(--danger); color:#fff; }
+    .btn-ghost { background:#f3f4f6; }
+    .badge { display:inline-flex; align-items:center; gap:.5rem; padding:.4rem .75rem; border-radius:999px; font-weight:700; }
+    .badge-silver { background:#eef2ff; border:2px solid #c7d2fe; }
+    .badge-gold { background:#fff7e6; border:2px solid #facc15; }
+    .badge-trophy { background:#fff1f2; border:2px solid #fb7185; }
+
+    .trophy-wrap { position:fixed; left:50%; top:-40vh; transform:translateX(-50%); z-index:60; pointer-events:none; display:none; }
+    .trophy-wrap.show { display:block; animation: dropIn 1s ease-out forwards, glow 2s ease-in-out 1s infinite alternate; }
+    @keyframes dropIn { 0% { top:-40vh; } 80% { top:15vh; } 100% { top:18vh; } }
+    @keyframes glow { from { filter: drop-shadow(0 0 0 rgba(250, 204, 21, .8)); } to { filter: drop-shadow(0 0 18px rgba(250, 204, 21, 1)); } }
+  </style>
 </head>
-<body class="text-[#263159]">
-    
-    
-    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <header class="text-center mb-10">
-            <h1 class="text-4xl md:text-5xl font-bold text-[#495579] mb-4">Badminton Skill Challenge Sheet</h1>
-            <p class="text-lg md:text-xl max-w-3xl mx-auto">
-                Work with your partner to complete the five challenges below. Record each attempt on video and have the instructor verify completion.
-            </p>
-        </header>
+<body class="min-h-screen">
+  <div id="trophy" class="trophy-wrap" aria-hidden="true">
+    <svg width="220" height="220" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#facc15"/><stop offset="100%" stop-color="#eab308"/></linearGradient></defs>
+      <g fill="url(#g)" stroke="#92400e" stroke-width="1">
+        <path d="M12 8h40v6a14 14 0 0 1-14 14H26A14 14 0 0 1 12 14z"/>
+        <path d="M16 8v-4h32v4z"/>
+        <rect x="28" y="28" width="8" height="8" rx="1"/>
+        <rect x="24" y="36" width="16" height="6" rx="1"/>
+        <rect x="20" y="42" width="24" height="6" rx="1"/>
+        <rect x="16" y="48" width="32" height="6" rx="1"/>
+      </g>
+      <circle cx="32" cy="19" r="7" fill="#fde68a" opacity=".7"/>
+    </svg>
+  </div>
 
-        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            
-            <div class="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center text-center transform hover:scale-105 transition-transform duration-300">
-                <h2 class="text-2xl font-bold text-[#495579] mb-4">Challenge 1: Clear to Backcourt</h2>
-                <div class="chart-container mb-4">
-                    <canvas id="chart1"></canvas>
-                </div>
-                <div class="flex-grow flex flex-col justify-between">
-                    <div>
-                        <h3 class="font-bold text-lg mb-1">Goal</h3>
-                        <p class="mb-4">Hit the shuttle high from the backcourt so it travels over the opponent’s head and lands in the opponent’s rear court.</p>
-                        <h3 class="font-bold text-lg mb-1">Instructions</h3>
-                        <p>Stand near opposite baselines with your partner. Succeed <span class="text-3xl font-bold text-[#FF8F52]">5</span> consecutive times to pass.</p>
-                    </div>
-                    <button class="mt-6 px-6 py-3 bg-[#FF8F52] text-white font-bold rounded-full shadow-md hover:bg-[#FF7A3D] transition-colors duration-300" onclick="showExplanation('Clear Shot')">
-                        ✨ Glossary
-                    </button>
-                </div>
-            </div>
+  <header class="text-center px-4 py-6">
+    <h1 class="text-3xl md:text-4xl font-extrabold text-[var(--headline)]">Badminton Skill Challenge</h1>
+  </header>
 
-            <div class="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center text-center transform hover:scale-105 transition-transform duration-300">
-                <h2 class="text-2xl font-bold text-[#495579] mb-4">Challenge 2: Net Drop</h2>
-                <div class="chart-container mb-4">
-                    <canvas id="chart2"></canvas>
-                </div>
-                <div class="flex-grow flex flex-col justify-between">
-                    <div>
-                        <h3 class="font-bold text-lg mb-1">Goal</h3>
-                        <p class="mb-4">Control your touch so the shuttle softly passes over the net and lands in the frontcourt.</p>
-                        <h3 class="font-bold text-lg mb-1">Instructions</h3>
-                        <p>Stand near the net with your partner. Land the shuttle within 1 meter of the net <span class="text-3xl font-bold text-[#FF8F52]">5</span> times in a row to pass.</p>
-                    </div>
-                    <button class="mt-6 px-6 py-3 bg-[#FF8F52] text-white font-bold rounded-full shadow-md hover:bg-[#FF7A3D] transition-colors duration-300" onclick="showExplanation('Net Drop')">
-                        ✨ Glossary
-                    </button>
-                </div>
-            </div>
+  <section id="loginSection" class="max-w-xl card mx-auto p-6 my-6">
+    <h2 class="text-xl font-bold">Student Login</h2>
+    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+      <input id="studentId" class="border rounded-lg p-3" placeholder="Student ID" />
+      <input id="studentName" class="border rounded-lg p-3" placeholder="Name" />
+    </div>
+    <div class="mt-4 flex gap-3">
+      <button class="btn btn-green" onclick="login()">Login</button>
+    </div>
+  </section>
 
-            <div class="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center text-center transform hover:scale-105 transition-transform duration-300">
-                <h2 class="text-2xl font-bold text-[#495579] mb-4">Challenge 3: Smash</h2>
-                <div class="chart-container mb-4">
-                    <canvas id="chart3"></canvas>
-                </div>
-                <div class="flex-grow flex flex-col justify-between">
-                    <div>
-                        <h3 class="font-bold text-lg mb-1">Goal</h3>
-                        <p class="mb-4">Learn the overhead swing and downward hitting for a smash.</p>
-                        <h3 class="font-bold text-lg mb-1">Instructions</h3>
-                        <p>Your partner tosses the shuttle above your head. Jump and hit it downward powerfully. Succeed <span class="text-3xl font-bold text-[#FF8F52]">3</span> times to pass.</p>
-                    </div>
-                    <button class="mt-6 px-6 py-3 bg-[#FF8F52] text-white font-bold rounded-full shadow-md hover:bg-[#FF7A3D] transition-colors duration-300" onclick="showExplanation('Smash')">
-                        ✨ Glossary
-                    </button>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center text-center transform hover:scale-105 transition-transform duration-300 md:col-span-2 lg:col-span-1 lg:col-start-2">
-                <h2 class="text-2xl font-bold text-[#495579] mb-4">Challenge 4: Basic Rally</h2>
-                <div class="chart-container mb-4">
-                    <canvas id="chart4"></canvas>
-                </div>
-                <div class="flex-grow flex flex-col justify-between">
-                    <div>
-                        <h3 class="font-bold text-lg mb-1">Goal</h3>
-                        <p class="mb-4">Develop basic returning ability and coordination.</p>
-                        <h3 class="font-bold text-lg mb-1">Instructions</h3>
-                        <p>Rally with light force near mid-court. Keep the shuttle going back and forth for <span class="text-3xl font-bold text-[#FF8F52]">10</span> consecutive hits without dropping to pass.</p>
-                    </div>
-                    <button class="mt-6 px-6 py-3 bg-[#FF8F52] text-white font-bold rounded-full shadow-md hover:bg-[#FF7A3D] transition-colors duration-300" onclick="showExplanation('Rally')">
-                        ✨ Glossary
-                    </button>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center text-center transform hover:scale-105 transition-transform duration-300 md:col-start-1 md:col-end-3 lg:col-start-auto lg:col-end-auto">
-                <h2 class="text-2xl font-bold text-[#495579] mb-4">Challenge 5: Star Footwork</h2>
-                <div class="chart-container mb-4">
-                    <canvas id="chart5"></canvas>
-                </div>
-                <div class="flex-grow flex flex-col justify-between">
-                    <div>
-                        <h3 class="font-bold text-lg mb-1">Goal</h3>
-                        <p class="mb-4">Get familiar with moving to each area of the badminton court.</p>
-                        <h3 class="font-bold text-lg mb-1">Instructions</h3>
-                        <p>From the center, move to eight directions and return to the center. Finish one full cycle within <span class="text-3xl font-bold text-[#FF8F52]">60</span> seconds to pass.</p>
-                    </div>
-                    <button class="mt-6 px-6 py-3 bg-[#FF8F52] text-white font-bold rounded-full shadow-md hover:bg-[#FF7A3D] transition-colors duration-300" onclick="showExplanation('Footwork Drill')">
-                        ✨ Glossary
-                    </button>
-                </div>
-            </div>
-
-        </main>
+  <main id="app" class="container mx-auto px-4 pb-20 hidden">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <span id="helloText" class="font-bold"></span>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-red" onclick="logout()">Logout</button>
+      </div>
     </div>
 
-    <div id="explanationModal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <button class="close-button" onclick="closeModal()">&times;</button>
-            <h2 id="modalTitle" class="text-3xl font-bold text-[#495579] mb-4"></h2>
-            <p id="modalContent" class="text-base text-[#263159] leading-relaxed"></p>
-            <div id="modalLoading" class="text-center mt-4 text-[#495579] hidden">
-                <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4 mx-auto" style="border-top-color: #FF8F52"></div>
-                Loading...
-            </div>
+    <section class="card p-4 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
+        <div class="justify-self-center">
+          <canvas id="overallChart" width="220" height="220" aria-label="Progress Chart" role="img"></canvas>
         </div>
+        <div class="md:col-span-2">
+          <h3 class="text-xl font-bold mb-2">Personal Progress</h3>
+          <p id="overallText" class="text-sm text-gray-700 mb-3">Completed 0/5 (0%)</p>
+          <div class="flex flex-wrap gap-2 items-center">
+            <span id="badge3" class="badge badge-silver hidden">🥈 Silver (3/5)</span>
+            <span id="badge4" class="badge badge-gold hidden">🥇 Gold (4/5)</span>
+            <span id="badge5" class="badge badge-trophy hidden">🏆 All Completed (5/5)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div id="cards" class="contents"></div>
+    </section>
+  </main>
+
+  <div id="glossaryModal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="font-bold" id="glossaryTitle">Glossary</h3>
+        <span class="close-x" onclick="closeGlossary()">✖</span>
+      </div>
+      <div class="modal-body p-4">
+        <p id="glossaryBody" class="text-gray-800 leading-7"></p>
+      </div>
     </div>
+  </div>
 
-    <script>
-        // === Keep the exact same plugin math/drawing as original ===
-        const centerTextPlugin = {
-            id: 'centerText',
-            afterDraw: (chart) => {
-                const ctx = chart.ctx;
-                const canvas = chart.canvas;
-                const centerX = canvas.width / 2;
-                const centerY = canvas.height / 2;
-                const text = chart.options.plugins.centerText.text;
-                const unit = chart.options.plugins.centerText.unit;
-                
-                ctx.save();
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                
-                ctx.font = `bold 3rem 'Noto Sans TC'`;
-                ctx.fillStyle = '#FF8F52';
-                ctx.fillText(text, centerX, centerY - 10);
-                
-                ctx.font = `bold 1.2rem 'Noto Sans TC'`;
-                ctx.fillStyle = '#495579';
-                ctx.fillText(unit, centerX, centerY + 30);
+  <div id="videoModal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="font-bold" id="videoTitle">Learning Resource</h3>
+        <span class="close-x" onclick="closeVideo()">✖</span>
+      </div>
+      <div class="modal-body">
+        <div class="aspect-video w-full">
+          <iframe id="videoFrame" class="w-full h-[60vh]" src="" title="YouTube video" frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
 
-                ctx.restore();
-            }
-        };
+  <script>
+    const TOTAL = 5;
+    const PASSWORD = "888";
+    let currentStudent = null;
 
-        Chart.register(centerTextPlugin);
+    const GLOSSARY = {
+      'Clear Shot': 'A high deep shot hit from the back court to the opponent\'s back court. Focus on side-on stance, hitting point above and slightly in front of body, and full swing follow-through.',
+      'Net Drop': 'A delicate shot played close to the net. Keep the racket face steady and use a soft touch so the shuttle falls right behind the net.',
+      'Smash': 'An attacking downward shot. Raise elbow, extend upward, hit at the highest point slightly in front, and land with balance.',
+      'Rally': 'Emphasizes rhythm and consistency. Use about 70% power, return as shuttle crosses midline, focus on footwork and racket stability.',
+      'Star Footwork': 'Simulates movement in 8 directions. Start fast, adjust with small steps, and return to center with balance.'
+    };
 
-        function createChallengeChart(canvasId, targetNumber, unit) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: [unit, ''],
-                    datasets: [{
-                        data: [targetNumber, 0.0001],
-                        backgroundColor: ['#FF8F52', '#EAEFFB'],
-                        borderColor: '#ffffff',
-                        borderWidth: 4,
-                        hoverBorderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '80%',
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            enabled: false,
-                            callbacks: {
-                                title: function(tooltipItems) {
-                                    const item = tooltipItems[0];
-                                    let label = item.chart.data.labels[item.dataIndex];
-                                    if (Array.isArray(label)) {
-                                      return label.join(' ');
-                                    } else {
-                                      return label;
-                                    }
-                                }
-                            }
-                        },
-                        centerText: {
-                            text: targetNumber,
-                            unit: unit
-                        }
-                    }
-                }
-            });
-        }
+    const CHALLENGES = [
+      {title:'Clear Shot', goal:'Hit the shuttle high and deep to the opponent\'s back court.', method:'With a partner at baseline, successfully hit 5 clears to the back court.', video:'https://www.youtube.com/watch?v=CJXAXS82m5M'},
+      {title:'Net Drop', goal:'Control soft shots over the net.', method:'Play net shots with partner, successfully land 5 within 1 meter of the net.', video:'https://www.youtube.com/watch?v=dR-NXBW2m5c'},
+      {title:'Smash', goal:'Learn downward hitting technique.', method:'Partner tosses the shuttle above your head, successfully smash 3 times into opponent court.', video:'https://www.youtube.com/watch?v=lZSFU_OpbCw'},
+      {title:'Rally', goal:'Build consistency and coordination.', method:'Rally with light power, 10 consecutive returns without dropping.', video:'https://www.youtube.com/watch?v=3A22dThPUT0'},
+      {title:'Star Footwork', goal:'Familiarize with 8 directions footwork.', method:'Move from center to 8 directions and back, complete 1 cycle within 60 seconds.', video:'https://www.youtube.com/watch?v=b0ZXWXMsVDM'}
+    ];
 
-        document.addEventListener('DOMContentLoaded', () => {
-            createChallengeChart('chart1', 5, 'times');
-            createChallengeChart('chart2', 5, 'times');
-            createChallengeChart('chart3', 3, 'times');
-            createChallengeChart('chart4', 10, 'times');
-            createChallengeChart('chart5', 60, 'sec');
-        });
+    const qs = (sel) => document.querySelector(sel);
+    const nowISO = () => new Date().toISOString();
+    function keyFor(student) { return `badminton_${student}`; }
+    function getProgress(student) { return JSON.parse(localStorage.getItem(keyFor(student)) || '{}'); }
+    function setProgress(student, obj) { localStorage.setItem(keyFor(student), JSON.stringify(obj)); }
+    function beep() { const ctx = new (window.AudioContext||window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='triangle'; o.frequency.value=880; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.32); o.start(); o.stop(ctx.currentTime + 0.33); }
 
-        const explanationModal = document.getElementById('explanationModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalContent = document.getElementById('modalContent');
-        const modalLoading = document.getElementById('modalLoading');
+    function login() {
+      const id = qs('#studentId').value.trim();
+      const name = qs('#studentName').value.trim();
+      if(!id || !name) return alert('Please enter ID and Name');
+      currentStudent = `${id}_${name}`;
+      const p = getProgress(currentStudent);
+      if(!p._meta) p._meta = { createdAt: nowISO(), lastUpdatedAt: nowISO(), wrongPassword: {}, firstFinishAt: null };
+      setProgress(currentStudent, p);
+      qs('#helloText').textContent = `Hi, ${name}`;
+      qs('#loginSection').classList.add('hidden');
+      qs('#app').classList.remove('hidden');
+      renderCards(); loadStamps(); updateOverall();
+    }
+    function logout(){ currentStudent=null; qs('#app').classList.add('hidden'); qs('#loginSection').classList.remove('hidden'); qs('#studentId').value=''; qs('#studentName').value=''; }
 
-        function openModal() {
-            explanationModal.classList.remove('hidden');
-        }
+    function cardTemplate(idx, c){
+      return `
+      <article class="card p-5 stamp-wrap relative">
+        <svg id="stamp${idx}" class="stamp-svg" viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="60" cy="60" r="46" fill="none" stroke="#ef4444" stroke-width="6"></circle>
+          <text x="60" y="66" text-anchor="middle" font-size="26" font-weight="800" fill="#ef4444" style="letter-spacing:2px;">DONE</text>
+        </svg>
+        <h3 class="text-xl font-bold text-[var(--headline)] mb-2">Challenge ${idx}: ${c.title}</h3>
+        <p class="text-sm text-gray-700"><b>Goal:</b> ${c.goal}</p>
+        <p class="text-sm text-gray-700 mt-1"><b>Method:</b> ${c.method}</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button class="btn btn-ghost" onclick="openGlossary('${c.title}')">✨ Glossary</button>
+          <button class="btn btn-purple" onclick="openVideo(${idx}, '${c.title}', '${c.video}')">📘 Resource</button>
+          <button class="btn btn-green" onclick="verify(${idx}, '${c.title}')">✅ Complete</button>
+        </div>
+      </article>`;
+    }
+    function renderCards(){ qs('#cards').innerHTML = CHALLENGES.map((c,i)=>cardTemplate(i+1,c)).join(''); }
 
-        function closeModal() {
-            explanationModal.classList.add('hidden');
-            modalTitle.innerText = '';
-            modalContent.innerText = '';
-            modalLoading.classList.add('hidden');
-        }
-
-        // Local glossary fallback so it works even without an API key
-        const LOCAL_GLOSSARY = {
-            'Clear Shot': 'A clear is a high defensive shot hit from your backcourt to the opponent’s backcourt. Key points: side-on stance, full shoulder rotation, contact slightly in front and above the head, and relaxed follow-through.',
-            'Net Drop': 'A soft, controlled shot that barely clears the tape and falls close to the net. Keep the racket face steady, use minimal force, and let the shuttle tumble down.',
-            'Smash': 'A fast downward attacking shot. Lift the elbow, contact at the highest point in front of the body, snap the wrist, and land with balance.',
-            'Rally': 'Continuous cooperative hitting to build rhythm and stability. Use ~70% power, place the shuttle early, and keep your feet active.',
-            'Footwork Drill': '8-direction movement (front/back, left/right, and four diagonals). Explode on the first step, use small adjustment steps, then recover to center on the balls of your feet.'
-        };
-
-        async function callGeminiAPI(term) {
-            openModal();
-            modalTitle.innerText = `“${term}” Glossary`;
-            modalContent.innerText = '';
-            modalLoading.classList.remove('hidden');
-
-            const systemPrompt = "You are a professional and patient badminton coach. Explain the term in simple words for beginners. Avoid heavy jargon and provide practical tips or imagery to help understanding.";
-            const userQuery = `Please explain the badminton term \"${term}\".`;
-            const apiKey = ""; // <-- fill your Gemini API key if you want live responses
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-            // If no key, use local glossary immediately
-            if (!apiKey) {
-                await new Promise(r => setTimeout(r, 250));
-                modalContent.innerText = LOCAL_GLOSSARY[term] || 'No local explanation available. Please ask your instructor.';
-                modalLoading.classList.add('hidden');
-                return;
-            }
-
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] }
-            };
-
-            let retryDelay = 800;
-            const maxRetries = 4;
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (response.status === 429) {
-                        await new Promise(r => setTimeout(r, retryDelay));
-                        retryDelay *= 2;
-                        continue;
-                    }
-                    if (!response.ok) {
-                        const err = await response.json().catch(() => ({}));
-                        throw new Error(`API error ${response.status}${err?.error?.message ? ': ' + err.error.message : ''}`);
-                    }
-
-                    const data = await response.json();
-                    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                    modalContent.innerText = text || (LOCAL_GLOSSARY[term] ?? 'No explanation available.');
-                    break;
-                } catch (e) {
-                    if (i === maxRetries - 1) {
-                        // Final fallback to local text
-                        modalContent.innerText = LOCAL_GLOSSARY[term] || `Load failed: ${e.message}`;
-                    } else {
-                        await new Promise(r => setTimeout(r, retryDelay));
-                        retryDelay *= 2;
-                    }
-                }
-            }
-            modalLoading.classList.add('hidden');
-        }
-
-        // FIX: remove stray parentheses so the function is defined correctly
-        function showExplanation(term) {
-            callGeminiAPI(term);
-        }
-
-        /* ---------------------------------
-           Lightweight console self‑tests
-           --------------------------------- */
-        (function runSelfTests(){
-          try {
-            const log = (ok, msg) => console[ok ? 'log' : 'error'](`[TEST] ${ok ? 'PASS' : 'FAIL'} - ${msg}`);
-            log(typeof showExplanation === 'function', 'showExplanation is defined');
-            log(typeof callGeminiAPI === 'function', 'callGeminiAPI is defined');
-            const wasHidden = document.getElementById('explanationModal').classList.contains('hidden');
-            openModal();
-            const nowVisible = !document.getElementById('explanationModal').classList.contains('hidden');
-            closeModal();
-            const hiddenAgain = document.getElementById('explanationModal').classList.contains('hidden');
-            log(wasHidden && nowVisible && hiddenAgain, 'Modal toggles open/close');
-          } catch (e) {
-            console.warn('[TEST] Self-tests encountered an error:', e);
-          }
-        })();
-    </script>
-</body>
-</html>
+    function loadStamps(){ const p=getProgress(currentStudent); for(let i=1;i<=TOTAL;i++){ if(p['challenge'+i]===true) qs('#stamp'+i)?.classList.add('stamp-bounce'); } }
+    function markDone(i){ const el=qs('#stamp"+i); if(!el) return; el.classList.remove('stamp-bounce'); void el.offsetWidth; el.classList.add('stamp-bounce'); }
+    function verify(i, title){
+      const input = prompt(`Enter password to confirm Challenge ${i}: ${title}`);
+      const p = getProgress(currentStudent); if(!p._meta) p._meta={createdAt:nowISO(),lastUpdatedAt:nowISO(),wrongPassword:{},firstFinishAt:null};
+      if(input===null) return;
+      if(input===PASSWORD){ p['challenge'+i]=true; p._meta.lastUpdatedAt=nowISO(); const count=countCompleted(p); if(count===TOTAL && !p._meta.firstFinishAt) p._meta.firstFinishAt=nowISO(); setProgress(currentStudent,p); markDone(i); beep(); updateOverall(); alert(`🎉 Congrats! Challenge ${i} completed!`); }
+      else { const wp=p._meta.wrongPassword||{}; wp[i]=(wp[i]||0)+1; p._meta.wrongPassword=wp; p._meta.lastUpdatedAt=nowISO(); setProgress(currentStudent,p); alert(wp[i]>=3?'❗ Wrong password entered 3 times.':'❌ Wrong password, try
