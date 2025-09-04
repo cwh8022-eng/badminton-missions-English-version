@@ -159,13 +159,60 @@
   </div>
 
   <script>
-    // ... (其餘程式碼不變，只修改了印章文字)
+    // ===== Constants =====
+    const TOTAL = 5;
+    const PASSWORD = "888";
+    let currentStudent = null;
+
+    // Glossary
+    const GLOSSARY = {
+      'Clear Shot': 'A basic stroke hitting the shuttle high and deep to the opponent’s backcourt.',
+      'Net Shot': 'A delicate shot played close to the net. Focus on racket control and soft touch.',
+      'Smash': 'A powerful downward shot. Hit at the highest point slightly in front of the body.',
+      'Rally Practice': 'Focus on rhythm and consistency. Use about 70% strength with controlled shots.',
+      'Footwork Drill': 'Practice moving in 8 directions with quick steps and balance recovery.'
+    };
+
+    // Challenges
+    const CHALLENGES = [
+      {title:'Clear Shot', goal:'Send the shuttle high and deep.', method:'With a partner, hit to the backcourt successfully 5 times.', video:'https://www.youtube.com/watch?v=CJXAXS82m5M'},
+      {title:'Net Shot', goal:'Control shuttle close to the net.', method:'Practice net shots with a partner, 5 times within 1m from the net.', video:'https://www.youtube.com/watch?v=dR-NXBW2m5c'},
+      {title:'Smash', goal:'Learn downward attacking strokes.', method:'Partner tosses, hit downward successfully 3 times.', video:'https://www.youtube.com/watch?v=lZSFU_OpbCw'},
+      {title:'Rally Practice', goal:'Build stability and rhythm.', method:'Rally with light strokes, keep the shuttle 10 times without dropping.', video:'https://www.youtube.com/watch?v=3A22dThPUT0'},
+      {title:'Footwork Drill', goal:'Familiarize with 8-direction movement.', method:'Move to all 8 directions and return to center within 60 sec.', video:'https://www.youtube.com/watch?v=b0ZXWXMsVDM'}
+    ];
+
+    // Utility
+    const qs = (sel) => document.querySelector(sel);
+    const nowISO = () => new Date().toISOString();
+    function keyFor(student) { return `badminton_${student}`; }
+    function getProgress(student) { return JSON.parse(localStorage.getItem(keyFor(student)) || '{}'); }
+    function setProgress(student, obj) { localStorage.setItem(keyFor(student), JSON.stringify(obj)); }
+    function beep() { const ctx = new (window.AudioContext||window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='triangle'; o.frequency.value=880; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.32); o.start(); o.stop(ctx.currentTime + 0.33); }
+
+    // Login / Logout
+    function login() {
+      const id = qs('#studentId').value.trim();
+      const name = qs('#studentName').value.trim();
+      if(!id || !name) return alert('Please enter Student ID and Name.');
+      currentStudent = `${id}_${name}`;
+      const p = getProgress(currentStudent);
+      if(!p._meta) p._meta = { createdAt: nowISO(), lastUpdatedAt: nowISO(), wrongPassword: {}, firstFinishAt: null };
+      setProgress(currentStudent, p);
+      qs('#helloText').textContent = `Hi, ${name}`;
+      qs('#loginSection').classList.add('hidden');
+      qs('#app').classList.remove('hidden');
+      renderCards(); loadStamps(); updateOverall();
+    }
+    function logout(){ currentStudent=null; qs('#app').classList.add('hidden'); qs('#loginSection').classList.remove('hidden'); qs('#studentId').value=''; qs('#studentName').value=''; }
+
+    // Render Cards
     function cardTemplate(idx, c){
       return `
       <article class="card p-5 stamp-wrap relative">
         <svg id="stamp${idx}" class="stamp-svg" viewBox="0 0 120 120" aria-hidden="true">
           <circle cx="60" cy="60" r="46" fill="none" stroke="#ef4444" stroke-width="6"></circle>
-          <text x="60" y="66" text-anchor="middle" font-size="22" font-weight="800" fill="#ef4444" style="letter-spacing:2px;">COMPLETED</text>
+          <text x="60" y="66" text-anchor="middle" font-size="20" font-weight="800" fill="#ef4444" style="letter-spacing:2px;">COMPLETED</text>
         </svg>
         <h3 class="text-xl font-bold text-[var(--headline)] mb-2">Challenge ${idx}: ${c.title}</h3>
         <p class="text-sm text-gray-700"><b>Goal:</b> ${c.goal}</p>
@@ -177,6 +224,41 @@
         </div>
       </article>`;
     }
+    function renderCards(){ qs('#cards').innerHTML = CHALLENGES.map((c,i)=>cardTemplate(i+1,c)).join(''); }
+
+    // Verification
+    function loadStamps(){ const p=getProgress(currentStudent); for(let i=1;i<=TOTAL;i++){ if(p['challenge'+i]===true) qs('#stamp'+i)?.classList.add('stamp-bounce'); } }
+    function markDone(i){ const el=qs('#stamp'+i); if(!el) return; el.classList.remove('stamp-bounce'); void el.offsetWidth; el.classList.add('stamp-bounce'); }
+    function verify(i, title){
+      const input = prompt(`Enter password to confirm "Challenge ${i}: ${title}":`);
+      const p = getProgress(currentStudent); if(!p._meta) p._meta={createdAt:nowISO(),lastUpdatedAt:nowISO(),wrongPassword:{},firstFinishAt:null};
+      if(input===null) return;
+      if(input===PASSWORD){ p['challenge'+i]=true; p._meta.lastUpdatedAt=nowISO(); const count=countCompleted(p); if(count===TOTAL && !p._meta.firstFinishAt) p._meta.firstFinishAt=nowISO(); setProgress(currentStudent,p); markDone(i); beep(); updateOverall(); alert(`🎉 Congrats! Challenge ${i} completed!`); }
+      else { const wp=p._meta.wrongPassword||{}; wp[i]=(wp[i]||0)+1; p._meta.wrongPassword=wp; p._meta.lastUpdatedAt=nowISO(); setProgress(currentStudent,p); alert(wp[i]>=3?'❗ Wrong password entered 3 times. Please confirm completion before retrying.':'❌ Wrong password, try again.'); }
+    }
+
+    // Progress + Rewards
+    let overallChart;
+    function countCompleted(p){ return Object.keys(p).filter(k=>k.startsWith('challenge') && p[k]===true).length; }
+    function updateOverall(){
+      const p=getProgress(currentStudent); const done=countCompleted(p); const percent=Math.round(done/TOTAL*100);
+      qs('#overallText').textContent = `Completed ${done}/${TOTAL} (${percent}%)`;
+      qs('#badge3').classList.toggle('hidden', done<3);
+      qs('#badge4').classList.toggle('hidden', done<4);
+      qs('#badge5').classList.toggle('hidden', done<5);
+      const ctx=document.getElementById('overallChart').getContext('2d');
+      if(!overallChart){ overallChart=new Chart(ctx,{ type:'doughnut', data:{ datasets:[{ data:[done, TOTAL-done], borderWidth:4 }]}, options:{ cutout:'75%', plugins:{ legend:{display:false}, tooltip:{enabled:false} } } }); }
+      else { overallChart.data.datasets[0].data=[done, TOTAL-done]; overallChart.update(); }
+      if(done===TOTAL) showTrophy(); else hideTrophy();
+    }
+    function showTrophy(){ document.getElementById('trophy').classList.add('show'); beep(); }
+    function hideTrophy(){ document.getElementById('trophy').classList.remove('show'); }
+
+    // Modals
+    function openGlossary(title){ document.getElementById('glossaryTitle').textContent = `Glossary: ${title}`; document.getElementById('glossaryBody').textContent = GLOSSARY[title] || 'No description available.'; document.getElementById('glossaryModal').classList.add('show'); }
+    function closeGlossary(){ document.getElementById('glossaryModal').classList.remove('show'); }
+    function openVideo(i,title,url){ document.getElementById('videoTitle').textContent = `Resource: Challenge ${i} "${title}"`; const src = url.includes('embed')?url:url.replace('watch?v=','embed/'); document.getElementById('videoFrame').src = src+'?autoplay=1&rel=0'; document.getElementById('videoModal').classList.add('show'); }
+    function closeVideo(){ document.getElementById('videoFrame').src=''; document.getElementById('videoModal').classList.remove('show'); }
   </script>
 </body>
 </html>
